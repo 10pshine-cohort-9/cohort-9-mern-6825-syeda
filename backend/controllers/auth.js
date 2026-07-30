@@ -1,6 +1,13 @@
 const User = require("../models/User");
 const generateToken = require("../utils/generateToken");
 
+const cookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+};
+
 const registerUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -15,13 +22,11 @@ const registerUser = async (req, res) => {
     }
 
     const user = await User.create({ name, email, password });
-    const token = generateToken(user._id);
 
     res.status(201).json({
       _id: user._id,
       name: user.name,
       email: user.email,
-      token,
     });
   } catch (error) {
     console.error("Register error:", error);
@@ -49,16 +54,26 @@ const loginUser = async (req, res) => {
 
     const token = generateToken(user._id);
 
+    res.cookie("token", token, cookieOptions);
+
     res.status(200).json({
       _id: user._id,
       name: user.name,
       email: user.email,
-      token,
     });
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ message: "Server error during login" });
   }
+};
+
+const logoutUser = (req, res) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+  });
+  res.status(200).json({ message: "Logged out successfully" });
 };
 
 const getMe = async (req, res) => {
@@ -71,4 +86,4 @@ const getMe = async (req, res) => {
   }
 };
 
-module.exports = { registerUser, loginUser, getMe };
+module.exports = { registerUser, loginUser, logoutUser, getMe };

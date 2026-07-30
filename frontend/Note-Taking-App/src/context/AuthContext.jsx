@@ -8,12 +8,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      fetchCurrentUser();
-    } else {
-      setLoading(false);
-    }
+    fetchCurrentUser();
   }, []);
 
   const fetchCurrentUser = async () => {
@@ -21,7 +16,6 @@ export const AuthProvider = ({ children }) => {
       const res = await api.get("/auth/me");
       setUser(res.data);
     } catch (error) {
-      localStorage.removeItem("token");
       setUser(null);
     } finally {
       setLoading(false);
@@ -35,14 +29,16 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     const res = await api.post("/auth/login", { email, password });
-    localStorage.setItem("token", res.data.token);
-    setUser({ _id: res.data._id, name: res.data.name, email: res.data.email });
+    setUser(res.data);
     return res.data;
   };
 
-  const logout = () => {
-    localStorage.removeItem("token");
-    setUser(null);
+  const logout = async () => {
+    try {
+      await api.post("/auth/logout");
+    } finally {
+      setUser(null);
+    }
   };
 
   return (
