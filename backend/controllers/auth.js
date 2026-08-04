@@ -19,13 +19,13 @@ const registerUser = async (req, res) => {
 
     const userExists = await User.findOne({ email });
     if (userExists) {
-      logger.warn({ email }, "Registration attempt with existing email");
+      logger.warn("Registration attempt with an email that already exists");
       return res.status(409).json({ message: "User already exists with this email" });
     }
 
     const user = await User.create({ name, email, password });
 
-    logger.info({ userId: user._id, email: user.email }, "New user registered");
+    logger.info({ userId: user._id }, "New user registered");
 
     res.status(201).json({
       _id: user._id,
@@ -53,7 +53,7 @@ const loginUser = async (req, res) => {
     const user = await User.findOne({ email }).select("+password");
 
     if (!user || !(await user.comparePassword(password))) {
-      logger.warn({ email }, "Failed login attempt");
+      logger.warn("Failed login attempt");
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
@@ -61,7 +61,7 @@ const loginUser = async (req, res) => {
 
     res.cookie("token", token, cookieOptions);
 
-    logger.info({ userId: user._id, email: user.email }, "User logged in");
+    logger.info({ userId: user._id }, "User logged in");
 
     res.status(200).json({
       _id: user._id,

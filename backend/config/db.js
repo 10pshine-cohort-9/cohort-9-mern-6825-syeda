@@ -3,8 +3,8 @@ const logger = require("./logger");
 
 const connectDB = async () => {
   if (!process.env.MONGO_URI) {
-    logger.warn("MONGO_URI is not defined. Skipping database connection.");
-    return null;
+    logger.error("MONGO_URI is not defined.");
+    throw new Error("MONGO_URI is not defined. Cannot start server without a database connection.");
   }
 
   try {

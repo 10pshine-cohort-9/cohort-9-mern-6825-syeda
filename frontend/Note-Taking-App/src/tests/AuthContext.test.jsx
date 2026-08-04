@@ -20,7 +20,7 @@ const TestComponent = () => {
       <button onClick={() => login("test@example.com", "password123")}>
         Login
       </button>
-      <button onClick={() => logout()}>Logout</button>
+      <button onClick={() => logout().catch(() => {})}>Logout</button>
       <button onClick={() => register("Test", "test@example.com", "password123")}>
         Register
       </button>
@@ -34,114 +34,161 @@ describe("AuthContext", () => {
   });
 
   it("should start with loading true, then resolve to no user if /auth/me fails", async () => {
-    api.get.mockRejectedValueOnce(new Error("Not authenticated"));
+    try {
+      api.get.mockRejectedValueOnce(new Error("Not authenticated"));
 
-    render(
-      <AuthProvider>
-        <TestComponent />
-      </AuthProvider>
-    );
+      render(
+        <AuthProvider>
+          <TestComponent />
+        </AuthProvider>
+      );
 
-    expect(screen.getByTestId("loading").textContent).toBe("loading");
+      expect(screen.getByTestId("loading").textContent).toBe("loading");
 
-    await waitFor(() => {
-      expect(screen.getByTestId("loading").textContent).toBe("not-loading");
-    });
+      await waitFor(() => {
+        expect(screen.getByTestId("loading").textContent).toBe("not-loading");
+      });
 
-    expect(screen.getByTestId("user").textContent).toBe("no-user");
+      expect(screen.getByTestId("user").textContent).toBe("no-user");
+    } catch (error) {
+      throw error;
+    }
   });
 
   it("should set user after successful /auth/me on mount", async () => {
-    api.get.mockResolvedValueOnce({
-      data: { _id: "1", name: "Test", email: "test@example.com" },
-    });
+    try {
+      api.get.mockResolvedValueOnce({
+        data: { _id: "1", name: "Test", email: "test@example.com" },
+      });
 
-    render(
-      <AuthProvider>
-        <TestComponent />
-      </AuthProvider>
-    );
+      render(
+        <AuthProvider>
+          <TestComponent />
+        </AuthProvider>
+      );
 
-    await waitFor(() => {
-      expect(screen.getByTestId("user").textContent).toBe("test@example.com");
-    });
+      await waitFor(() => {
+        expect(screen.getByTestId("user").textContent).toBe("test@example.com");
+      });
+    } catch (error) {
+      throw error;
+    }
   });
 
   it("should set user after login", async () => {
-    api.get.mockRejectedValueOnce(new Error("Not authenticated"));
-    api.post.mockResolvedValueOnce({
-      data: { _id: "1", name: "Test", email: "test@example.com" },
-    });
+    try {
+      api.get.mockRejectedValueOnce(new Error("Not authenticated"));
+      api.post.mockResolvedValueOnce({
+        data: { _id: "1", name: "Test", email: "test@example.com" },
+      });
 
-    render(
-      <AuthProvider>
-        <TestComponent />
-      </AuthProvider>
-    );
+      render(
+        <AuthProvider>
+          <TestComponent />
+        </AuthProvider>
+      );
 
-    await waitFor(() => {
-      expect(screen.getByTestId("loading").textContent).toBe("not-loading");
-    });
+      await waitFor(() => {
+        expect(screen.getByTestId("loading").textContent).toBe("not-loading");
+      });
 
-    await act(async () => {
-      screen.getByText("Login").click();
-    });
+      await act(async () => {
+        screen.getByText("Login").click();
+      });
 
-    await waitFor(() => {
-      expect(screen.getByTestId("user").textContent).toBe("test@example.com");
-    });
+      await waitFor(() => {
+        expect(screen.getByTestId("user").textContent).toBe("test@example.com");
+      });
 
-    expect(api.post).toHaveBeenCalledWith("/auth/login", {
-      email: "test@example.com",
-      password: "password123",
-    });
+      expect(api.post).toHaveBeenCalledWith("/auth/login", {
+        email: "test@example.com",
+        password: "password123",
+      });
+    } catch (error) {
+      throw error;
+    }
   });
 
-  it("should clear user after logout", async () => {
-    api.get.mockResolvedValueOnce({
-      data: { _id: "1", name: "Test", email: "test@example.com" },
-    });
-    api.post.mockResolvedValueOnce({});
+  it("should clear user after successful logout", async () => {
+    try {
+      api.get.mockResolvedValueOnce({
+        data: { _id: "1", name: "Test", email: "test@example.com" },
+      });
+      api.post.mockResolvedValueOnce({});
 
-    render(
-      <AuthProvider>
-        <TestComponent />
-      </AuthProvider>
-    );
+      render(
+        <AuthProvider>
+          <TestComponent />
+        </AuthProvider>
+      );
 
-    await waitFor(() => {
+      await waitFor(() => {
+        expect(screen.getByTestId("user").textContent).toBe("test@example.com");
+      });
+
+      await act(async () => {
+        screen.getByText("Logout").click();
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("user").textContent).toBe("no-user");
+      });
+    } catch (error) {
+      throw error;
+    }
+  });
+
+  it("should NOT clear user if logout request fails", async () => {
+    try {
+      api.get.mockResolvedValueOnce({
+        data: { _id: "1", name: "Test", email: "test@example.com" },
+      });
+      api.post.mockRejectedValueOnce(new Error("Network error"));
+
+      render(
+        <AuthProvider>
+          <TestComponent />
+        </AuthProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("user").textContent).toBe("test@example.com");
+      });
+
+      await act(async () => {
+        screen.getByText("Logout").click();
+      });
+
       expect(screen.getByTestId("user").textContent).toBe("test@example.com");
-    });
-
-    await act(async () => {
-      screen.getByText("Logout").click();
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId("user").textContent).toBe("no-user");
-    });
+    } catch (error) {
+      throw error;
+    }
   });
 
   it("should NOT set user after register (backend does not log in on register)", async () => {
-    api.get.mockRejectedValueOnce(new Error("Not authenticated"));
-    api.post.mockResolvedValueOnce({
-      data: { _id: "1", name: "Test", email: "test@example.com" },
-    });
+    try {
+      api.get.mockRejectedValueOnce(new Error("Not authenticated"));
+      api.post.mockResolvedValueOnce({
+        data: { _id: "1", name: "Test", email: "test@example.com" },
+      });
 
-    render(
-      <AuthProvider>
-        <TestComponent />
-      </AuthProvider>
-    );
+      render(
+        <AuthProvider>
+          <TestComponent />
+        </AuthProvider>
+      );
 
-    await waitFor(() => {
-      expect(screen.getByTestId("loading").textContent).toBe("not-loading");
-    });
+      await waitFor(() => {
+        expect(screen.getByTestId("loading").textContent).toBe("not-loading");
+      });
 
-    await act(async () => {
-      screen.getByText("Register").click();
-    });
+      await act(async () => {
+        screen.getByText("Register").click();
+      });
 
-    expect(screen.getByTestId("user").textContent).toBe("no-user");
+      expect(screen.getByTestId("user").textContent).toBe("no-user");
+    } catch (error) {
+      throw error;
+    }
   });
 });

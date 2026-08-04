@@ -1,16 +1,15 @@
+require("dotenv").config();
+
 const dns = require("dns");
 dns.setServers(["8.8.8.8", "8.8.4.4"]);
 
 const express = require("express");
-const dotenv = require("dotenv");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const pinoHttp = require("pino-http");
 const connectDB = require("./config/db");
 const logger = require("./config/logger");
 const authRoutes = require("./routes/authRoutes");
-
-dotenv.config();
 
 const app = express();
 const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173")
@@ -43,7 +42,10 @@ app.use("/api/auth", authRoutes);
 
 app.use((err, req, res, next) => {
   logger.error({ err }, "Unhandled error");
-  res.status(500).json({ message: err.message || "Internal server error" });
+  const isProd = process.env.NODE_ENV === "production";
+  res.status(err.status || 500).json({
+    message: isProd ? "Internal server error" : err.message || "Internal server error",
+  });
 });
 
 const PORT = process.env.PORT || 5000;
