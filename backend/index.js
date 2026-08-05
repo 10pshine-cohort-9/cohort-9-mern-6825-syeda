@@ -3,6 +3,7 @@ require("dotenv").config();
 const dns = require("dns");
 dns.setServers(["8.8.8.8", "8.8.4.4"]);
 
+const noteRoutes = require("./routes/noteRoutes");
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
@@ -32,6 +33,8 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 
+
+
 app.use(pinoHttp({ logger }));
 
 app.get("/", (req, res) => {
@@ -39,6 +42,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/notes", noteRoutes);
 
 app.use((err, req, res, next) => {
   logger.error({ err }, "Unhandled error");
