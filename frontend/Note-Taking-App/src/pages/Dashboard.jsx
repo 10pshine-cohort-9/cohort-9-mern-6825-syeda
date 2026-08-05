@@ -64,15 +64,22 @@ const Dashboard = () => {
   };
 
   const handleSubmit = async (data) => {
-    if (editingNote) {
-      const res = await api.put(`/notes/${editingNote._id}`, data);
-      setNotes((prev) => prev.map((n) => (n._id === editingNote._id ? res.data : n)));
-    } else {
-      const res = await api.post("/notes", data);
-      setNotes((prev) => [res.data, ...prev]);
+    try {
+      if (editingNote) {
+        const res = await api.put(`/notes/${editingNote._id}`, data);
+        setNotes((prev) => prev.map((n) => (n._id === editingNote._id ? res.data : n)));
+      } else {
+        const res = await api.post("/notes", data);
+        setNotes((prev) => [res.data, ...prev]);
+      }
+      setShowForm(false);
+      setEditingNote(null);
+    } catch (err) {
+      setError("Failed to save note");
+      // Rethrow so NoteForm can show the field-level error and keep the
+      // modal open for the user to retry.
+      throw err;
     }
-    setShowForm(false);
-    setEditingNote(null);
   };
 
   const handleTogglePin = async (note) => {
@@ -149,6 +156,11 @@ const Dashboard = () => {
     onPermanentDelete: handlePermanentDelete,
   };
 
+  const statusMessage =
+    view === "trash"
+      ? "Notes here are kept for 30 days before permanent deletion."
+      : "You have a few notes in your Library.";
+
   return (
     <div className="flex bg-[#F7F7FA] min-h-screen">
       <Sidebar
@@ -173,60 +185,47 @@ const Dashboard = () => {
             />
           </div>
 
-       <div className="flex items-center gap-3">
-  <div className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-full pl-1.5 pr-1 py-1 shadow-sm">
-    <div className="w-7 h-7 rounded-full bg-[#10151F] flex items-center justify-center shrink-0">
-      <span className="font-['Space_Grotesk'] text-xs font-bold text-[#FFC93C]">
-        {user?.name?.charAt(0).toUpperCase() || "?"}
-      </span>
-    </div>
-    <span className="text-sm font-medium text-gray-700 hidden sm:block pr-1">
-      {user?.name}
-    </span>
-    <button
-      onClick={handleLogout}
-      className="flex items-center justify-center w-7 h-7 rounded-full text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors duration-150"
-      title="Log out"
-    >
-      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
-      </svg>
-    </button>
-  </div>
-</div>
-
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-full pl-1.5 pr-1 py-1 shadow-sm">
+              <div className="w-7 h-7 rounded-full bg-[#10151F] flex items-center justify-center shrink-0">
+                <span className="font-['Space_Grotesk'] text-xs font-bold text-[#FFC93C]">
+                  {user?.name?.charAt(0).toUpperCase() || "?"}
+                </span>
+              </div>
+              <span className="text-sm font-medium text-gray-700 hidden sm:block pr-1">
+                {user?.name}
+              </span>
+              <button
+                onClick={handleLogout}
+                className="flex items-center justify-center w-7 h-7 rounded-full text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors duration-150"
+                title="Log out"
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
 
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#10151F] to-[#1c2433] px-6 py-5 mb-6 animate-fade-in-up">
-  <div
-    className="absolute -top-6 -right-6 w-32 h-32 rounded-full opacity-20"
-    style={{ background: "#FFC93C" }}
-  />
-  <div
-    className="absolute -bottom-8 right-16 w-20 h-20 rounded-full opacity-10"
-    style={{ background: "#E8553D" }}
-  />
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#10151F] to-[#1c2433] px-6 py-5 mb-6 animate-fade-in-up">
+          <div
+            className="absolute -top-6 -right-6 w-32 h-32 rounded-full opacity-20"
+            style={{ background: "#FFC93C" }}
+          />
+          <div
+            className="absolute -bottom-8 right-16 w-20 h-20 rounded-full opacity-10"
+            style={{ background: "#E8553D" }}
+          />
 
-  <div className="relative">
-    <h1 className="font-['Space_Grotesk'] text-xl font-bold text-white mb-1">
-      Welcome back, {user?.name}
-      <span className="font-['Caveat'] text-2xl text-[#FFC93C] ml-2">wonderful</span>
-    </h1>
-    <p className="text-white/60 text-sm">
-      {view === "trash"
-        ? "Notes here are kept for 30 days before permanent deletion."
-        : "You have a few notes in your Library."}
-    </p>
-  </div>
-</div>
-
-
-
-        <p className="text-gray-500 text-sm mb-6">
-          {view === "trash"
-            ? "Notes here are kept for 30 days before permanent deletion."
-            : "You have a few notes in your Library."}
-        </p>
+          <div className="relative">
+            <h1 className="font-['Space_Grotesk'] text-xl font-bold text-white mb-1">
+              Welcome back, {user?.name}
+              <span className="font-['Caveat'] text-2xl text-[#FFC93C] ml-2">wonderful</span>
+            </h1>
+            <p className="text-white/60 text-sm">{statusMessage}</p>
+          </div>
+        </div>
 
         {error && (
           <div className="bg-red-50 text-red-600 text-sm px-3 py-2 rounded-lg mb-4">{error}</div>

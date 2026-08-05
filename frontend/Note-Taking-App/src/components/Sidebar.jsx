@@ -14,9 +14,6 @@ const ICONS = {
   all: "M4 6h16M4 12h16M4 18h7",
   pinned: "M9 4v6l-2 4v2h10v-2l-2-4V4M12 16v5",
   trash: "M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6h16z",
-  settings:
-    "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z",
-  help: "M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
   plus: "M12 4v16m8-8H4",
 };
 
@@ -81,10 +78,11 @@ const Sidebar = ({ view, onViewChange, onNewNote, counts }) => {
         />
       </nav>
 
-      <div className="mt-auto flex flex-col gap-1 pt-6 border-t border-gray-100">
-        <NavItem icon={ICONS.settings} label="Settings" active={false} onClick={() => {}} />
-        <NavItem icon={ICONS.help} label="Help" active={false} onClick={() => {}} />
-      </div>
+      {/*
+        Settings and Help are intentionally omitted until real destinations
+        exist for them — wiring them to no-op handlers gave users dead
+        buttons with no feedback. Re-add once routes/pages are implemented.
+      */}
     </aside>
   );
 };

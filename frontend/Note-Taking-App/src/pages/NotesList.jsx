@@ -32,12 +32,23 @@ const NotesList = () => {
     setShowForm(true);
   };
 
-  const handleEdit = (note) => {
+  const handleOpen = (note) => {
     setEditingNote(note);
     setShowForm(true);
   };
 
-  const handleDelete = async (id) => {
+  const handleTogglePin = async (note) => {
+    const optimistic = { ...note, pinned: !note.pinned };
+    setNotes((prev) => prev.map((n) => (n._id === note._id ? optimistic : n)));
+    try {
+      await api.patch(`/notes/${note._id}/pin`);
+    } catch (err) {
+      setNotes((prev) => prev.map((n) => (n._id === note._id ? note : n)));
+      setError("Failed to update pin");
+    }
+  };
+
+  const handleTrash = async (id) => {
     if (!window.confirm("Delete this note?")) return;
 
     const previous = notes;
@@ -52,15 +63,22 @@ const NotesList = () => {
   };
 
   const handleSubmit = async (data) => {
-    if (editingNote) {
-      const res = await api.put(`/notes/${editingNote._id}`, data);
-      setNotes(notes.map((n) => (n._id === editingNote._id ? res.data : n)));
-    } else {
-      const res = await api.post("/notes", data);
-      setNotes([res.data, ...notes]);
+    try {
+      if (editingNote) {
+        const res = await api.put(`/notes/${editingNote._id}`, data);
+        setNotes(notes.map((n) => (n._id === editingNote._id ? res.data : n)));
+      } else {
+        const res = await api.post("/notes", data);
+        setNotes([res.data, ...notes]);
+      }
+      setShowForm(false);
+      setEditingNote(null);
+    } catch (err) {
+      setError("Failed to save note");
+      // Rethrow so NoteForm can surface the field-level error and keep
+      // the modal open for the user to retry.
+      throw err;
     }
-    setShowForm(false);
-    setEditingNote(null);
   };
 
   const handleCancel = () => {
@@ -97,7 +115,14 @@ const NotesList = () => {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {notes.map((note) => (
-            <NoteCard key={note._id} note={note} onEdit={handleEdit} onDelete={handleDelete} />
+            <NoteCard
+              key={note._id}
+              note={note}
+              view="all"
+              onOpen={handleOpen}
+              onTogglePin={handleTogglePin}
+              onTrash={handleTrash}
+            />
           ))}
         </div>
       )}

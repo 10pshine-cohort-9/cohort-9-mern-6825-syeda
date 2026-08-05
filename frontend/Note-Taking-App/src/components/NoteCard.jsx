@@ -36,11 +36,22 @@ const NoteCard = ({ note, view, onOpen, onTogglePin, onTrash, onRestore, onPerma
   const preview = note.content?.length > 110 ? `${note.content.slice(0, 110)}...` : note.content;
   const accent = getAccent(note._id);
 
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onOpen(note);
+    }
+  };
+
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={() => onOpen(note)}
+      onKeyDown={handleKeyDown}
+      aria-label={`Open note: ${note.title}`}
       style={{ borderLeftColor: accent }}
-      className="group bg-white rounded-xl shadow-sm hover:shadow-md border-l-4 p-4 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 animate-fade-in-up"
+      className="group bg-white rounded-xl shadow-sm hover:shadow-md focus:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC93C] border-l-4 p-4 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 animate-fade-in-up"
     >
       <div className="flex items-start justify-between gap-2">
         <h3 className="font-['Space_Grotesk'] font-semibold text-gray-900 line-clamp-1">
@@ -48,11 +59,14 @@ const NoteCard = ({ note, view, onOpen, onTogglePin, onTrash, onRestore, onPerma
         </h3>
         {view !== "trash" && (
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               onTogglePin(note);
             }}
-            className={`shrink-0 transition-colors duration-150 ${
+            aria-pressed={note.pinned}
+            aria-label={note.pinned ? "Unpin note" : "Pin note"}
+            className={`shrink-0 transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC93C] rounded ${
               note.pinned ? "text-[#E8553D]" : "text-gray-300 hover:text-gray-500"
             }`}
           >
@@ -68,38 +82,44 @@ const NoteCard = ({ note, view, onOpen, onTogglePin, onTrash, onRestore, onPerma
       <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-50">
         <span className="text-xs text-gray-400">{formatDate(note.updatedAt)}</span>
 
-        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+        <div className="flex gap-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-within:opacity-100 transition-opacity duration-150">
           {view === "trash" ? (
             <>
               <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onRestore(note._id);
                 }}
-                className="text-gray-400 hover:text-green-600 transition-colors duration-150"
+                className="text-gray-400 hover:text-green-600 transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC93C] rounded"
                 title="Restore"
+                aria-label="Restore note"
               >
                 <RestoreIcon />
               </button>
               <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onPermanentDelete(note._id);
                 }}
-                className="text-gray-400 hover:text-red-600 transition-colors duration-150"
+                className="text-gray-400 hover:text-red-600 transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC93C] rounded"
                 title="Delete permanently"
+                aria-label="Delete note permanently"
               >
                 <TrashIcon />
               </button>
             </>
           ) : (
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 onTrash(note._id);
               }}
-              className="text-gray-400 hover:text-red-600 transition-colors duration-150"
+              className="text-gray-400 hover:text-red-600 transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC93C] rounded"
               title="Move to trash"
+              aria-label="Move note to trash"
             >
               <TrashIcon />
             </button>

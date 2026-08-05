@@ -103,7 +103,13 @@ const updateNote = async (req, res) => {
 
 const togglePin = async (req, res) => {
   try {
-    const note = await Note.findOne({ _id: req.params.id, owner: req.user.id });
+    // Exclude trashed notes so a stale pin request can't bypass the
+    // unpin-on-trash behavior enforced in trashNote().
+    const note = await Note.findOne({
+      _id: req.params.id,
+      owner: req.user.id,
+      trashed: false,
+    });
 
     if (!note) {
       return res.status(404).json({ message: "Note not found" });
