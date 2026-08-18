@@ -9,12 +9,25 @@ const EXPORT_DIR = path.join(__dirname, "..", "tmp", "exports");
 fs.mkdirSync(EXPORT_DIR, { recursive: true });
 
 const SUPPORTED_FORMATS = ["csv", "txt", "xlsx"];
+const MAX_EXPORT_NOTES = 2000;
+
+
+const TXT_DELIMITER_LINE = /^-----$/;
+
+
+const sanitizeCsvField = (value) => {
+  const str = String(value ?? "");
+  if (/^[=+\-@]/.test(str)) {
+    return `'${str}`;
+  }
+  return str;
+};
 
 const buildCsv = (notes) => {
   return stringifyCsv(
     notes.map((n) => ({
-      title: n.title,
-      content: n.content,
+      title: sanitizeCsvField(n.title),
+      content: sanitizeCsvField(n.content),
       pinned: n.pinned,
       createdAt: n.createdAt.toISOString(),
       updatedAt: n.updatedAt.toISOString(),
@@ -26,9 +39,16 @@ const buildCsv = (notes) => {
   );
 };
 
+const escapeTxtContent = (content) => {
+  return content
+    .split("\n")
+    .map((line) => (TXT_DELIMITER_LINE.test(line) ? `\\${line}` : line))
+    .join("\n");
+};
+
 const buildTxt = (notes) => {
   return notes
-    .map((n) => `Title: ${n.title}\n${n.content}`)
+    .map((n) => `Title: ${n.title}\n${escapeTxtContent(n.content)}`)
     .join("\n-----\n");
 };
 
@@ -54,20 +74,23 @@ const buildExportFile = (notes, format) => {
     throw new Error(`Unsupported export format: ${format}`);
   }
 
+  const boundedNotes = notes.slice(0, MAX_EXPORT_NOTES);
+  const truncated = notes.length > MAX_EXPORT_NOTES;
+
   const uniqueId = crypto.randomBytes(6).toString("hex");
   const dateStr = new Date().toISOString().slice(0, 10);
   const filename = `notewell-export-${dateStr}-${uniqueId}.${format}`;
   const filePath = path.join(EXPORT_DIR, filename);
 
   if (format === "csv") {
-    fs.writeFileSync(filePath, buildCsv(notes), "utf-8");
+    fs.writeFileSync(filePath, buildCsv(boundedNotes), "utf-8");
   } else if (format === "txt") {
-    fs.writeFileSync(filePath, buildTxt(notes), "utf-8");
+    fs.writeFileSync(filePath, buildTxt(boundedNotes), "utf-8");
   } else if (format === "xlsx") {
-    fs.writeFileSync(filePath, buildXlsxBuffer(notes));
+    fs.writeFileSync(filePath, buildXlsxBuffer(boundedNotes));
   }
 
-  return { filePath, filename };
+  return { filePath, filename, exportedCount: boundedNotes.length, truncated };
 };
 
-module.exports = { buildExportFile, SUPPORTED_FORMATS };
+module.exports = { buildExportFile, SUPPORTED_FORMATS, MAX_EXPORT_NOTES };

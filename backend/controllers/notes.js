@@ -3,6 +3,7 @@ const Note = require("../models/Note");
 const logger = require("../config/logger");
 const { parseImportFile } = require("../utils/noteFileParser");
 const { buildExportFile, SUPPORTED_FORMATS } = require("../utils/noteFileExporter");
+const { ALLOWED_EXTENSIONS_LABEL } = require("../middleware/upload");
 
 const MAX_IMPORT_NOTES = 500;
 const MAX_TITLE_LENGTH = 200;
@@ -203,7 +204,11 @@ const permanentlyDeleteNote = async (req, res) => {
 };
 
 const exportNotes = async (req, res) => {
-  const format = (req.query.format || "csv").toLowerCase();
+  let rawFormat = req.query.format;
+  if (Array.isArray(rawFormat)) {
+    rawFormat = rawFormat[0];
+  }
+  const format = typeof rawFormat === "string" ? rawFormat.toLowerCase() : "csv";
 
   if (!SUPPORTED_FORMATS.includes(format)) {
     return res.status(400).json({
@@ -226,7 +231,12 @@ const exportNotes = async (req, res) => {
     filePath = built.filePath;
 
     logger.info(
-      { userId: req.user.id, noteCount: notes.length, format },
+      {
+        userId: req.user.id,
+        noteCount: built.exportedCount,
+        truncated: built.truncated,
+        format,
+      },
       "Notes exported"
     );
 
@@ -254,7 +264,7 @@ const exportNotes = async (req, res) => {
 
 const importNotes = async (req, res) => {
   if (!req.file) {
-    return res.status(400).json({ message: "Please upload a .csv, .txt, or .xlsx file" });
+    return res.status(400).json({ message: `Please upload a ${ALLOWED_EXTENSIONS_LABEL} file` });
   }
 
   const uploadedPath = req.file.path;

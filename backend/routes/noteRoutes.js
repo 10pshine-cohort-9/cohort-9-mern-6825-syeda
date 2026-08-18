@@ -14,11 +14,12 @@ const {
   importNotes,
 } = require("../controllers/notes");
 const { protect } = require("../middleware/Auth");
-const upload = require("../middleware/upload");
+const { upload } = require("../middleware/upload");
 
 const router = express.Router();
 
 router.use(protect);
+
 
 router.get("/trash", getTrashedNotes);
 router.get("/export", exportNotes);

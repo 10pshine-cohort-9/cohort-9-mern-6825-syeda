@@ -3,9 +3,22 @@ const path = require("path");
 const { parse: parseCsvSync } = require("csv-parse/sync");
 const XLSX = require("xlsx");
 
+// Matches an unescaped delimiter line. Escaped delimiter lines
+// (originally part of a note's content) are written as "\-----"
+// by the exporter and are therefore NOT matched here.
+const TXT_RECORD_SEPARATOR = /\r?\n-----\r?\n/;
+const ESCAPED_DELIMITER_LINE = /^\\-----$/;
+
+const unescapeTxtContent = (content) => {
+  return content
+    .split("\n")
+    .map((line) => (ESCAPED_DELIMITER_LINE.test(line) ? line.slice(1) : line))
+    .join("\n");
+};
+
 const parseTxt = (text) => {
   const blocks = text
-    .split(/\r?\n-----\r?\n/)
+    .split(TXT_RECORD_SEPARATOR)
     .map((b) => b.trim())
     .filter(Boolean);
 
@@ -17,13 +30,14 @@ const parseTxt = (text) => {
     if (titleMatch) {
       return {
         title: titleMatch[1].trim(),
-        content: lines.slice(1).join("\n").trim(),
+        content: unescapeTxtContent(lines.slice(1).join("\n")).trim(),
       };
     }
 
+    // Fallback: no "Title:" prefix found, treat first line as title anyway
     return {
       title: firstLine.trim(),
-      content: lines.slice(1).join("\n").trim(),
+      content: unescapeTxtContent(lines.slice(1).join("\n")).trim(),
     };
   });
 };
@@ -53,7 +67,10 @@ const parseXlsx = (filePath) => {
   }));
 };
 
-
+/**
+ * Reads and parses an uploaded file from disk into an array of { title, content }.
+ * Uses Node's fs module to read the file contents.
+ */
 const parseImportFile = (filePath) => {
   const ext = path.extname(filePath).toLowerCase();
 

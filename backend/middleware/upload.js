@@ -18,6 +18,7 @@ const storage = multer.diskStorage({
 });
 
 const ALLOWED_EXTENSIONS = [".csv", ".txt", ".xlsx", ".xls"];
+const ALLOWED_EXTENSIONS_LABEL = ".csv, .txt, .xlsx, and .xls";
 
 const fileFilter = (req, file, cb) => {
   const ext = path.extname(file.originalname).toLowerCase();
@@ -25,7 +26,7 @@ const fileFilter = (req, file, cb) => {
   if (ALLOWED_EXTENSIONS.includes(ext)) {
     cb(null, true);
   } else {
-    cb(new Error("Only .csv, .txt, and .xlsx files are allowed"), false);
+    cb(new Error(`Only ${ALLOWED_EXTENSIONS_LABEL} files are allowed`), false);
   }
 };
 
@@ -37,4 +38,4 @@ const upload = multer({
   },
 });
 
-module.exports = upload;
+module.exports = { upload, ALLOWED_EXTENSIONS_LABEL };
