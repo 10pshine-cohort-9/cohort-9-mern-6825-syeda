@@ -19,7 +19,7 @@ const getNotes = async (req, res) => {
     logger.error({ err: error }, "GetNotes error");
     res.status(500).json({ message: "Server error fetching notes" });
   }
-};
+}; 
 
 const getTrashedNotes = async (req, res) => {
   try {
@@ -203,7 +203,7 @@ const permanentlyDeleteNote = async (req, res) => {
   }
 };
 
-const exportNotes = async (req, res) => {
+const exportNotes = async (req, res, next) => {
   let rawFormat = req.query.format;
   if (Array.isArray(rawFormat)) {
     rawFormat = rawFormat[0];
@@ -250,6 +250,11 @@ const exportNotes = async (req, res) => {
 
       if (err) {
         logger.error({ err }, "Error sending export file");
+        // If headers were already sent (download partially streamed),
+        // we can't send a fresh JSON error response - forward to
+        // Express's error-handling middleware so it can close the
+        // connection correctly instead of attempting a double-send.
+        next(err);
       }
     });
   } catch (error) {
