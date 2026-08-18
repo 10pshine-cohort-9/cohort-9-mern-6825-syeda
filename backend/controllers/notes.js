@@ -2,7 +2,7 @@ const fs = require("fs");
 const Note = require("../models/Note");
 const logger = require("../config/logger");
 const { parseImportFile } = require("../utils/noteFileParser");
-const { buildExportFile, SUPPORTED_FORMATS } = require("../utils/noteFileExporter");
+const { buildExportFile, SUPPORTED_FORMATS, MAX_EXPORT_NOTES } = require("../utils/noteFileExporter");
 const { ALLOWED_EXTENSIONS_LABEL } = require("../middleware/upload");
 
 const MAX_IMPORT_NOTES = 500;
@@ -221,6 +221,7 @@ const exportNotes = async (req, res) => {
   try {
     const notes = await Note.find({ owner: req.user.id, trashed: false })
       .sort({ createdAt: 1 })
+      .limit(MAX_EXPORT_NOTES + 1)
       .lean();
 
     if (notes.length === 0) {
@@ -241,8 +242,6 @@ const exportNotes = async (req, res) => {
     );
 
     res.download(filePath, built.filename, (err) => {
-      // Clean up the temp file from disk regardless of whether the
-      // download succeeded or the client disconnected mid-stream.
       fs.unlink(filePath, (unlinkErr) => {
         if (unlinkErr) {
           logger.error({ err: unlinkErr }, "Failed to clean up export temp file");

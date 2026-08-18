@@ -42,6 +42,17 @@ const parseTxt = (text) => {
   });
 };
 
+// Mirrors sanitizeCsvField in noteFileExporter.js: a leading apostrophe
+// was added there to stop spreadsheet software from treating =, +, -, @
+// prefixed values as formulas. Strip it back off on import so a
+// round-tripped export/import doesn't accumulate a literal apostrophe.
+const unescapeCsvField = (value) => {
+  if (typeof value === "string" && /^'[=+\-@]/.test(value)) {
+    return value.slice(1);
+  }
+  return value;
+};
+
 const parseCsv = (text) => {
   const records = parseCsvSync(text, {
     columns: true,
@@ -50,8 +61,8 @@ const parseCsv = (text) => {
   });
 
   return records.map((row) => ({
-    title: row.title || row.Title || "",
-    content: row.content || row.Content || "",
+    title: unescapeCsvField(row.title || row.Title || ""),
+    content: unescapeCsvField(row.content || row.Content || ""),
   }));
 };
 
