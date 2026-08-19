@@ -1,5 +1,13 @@
+const fs = require("fs");
 const Note = require("../models/Note");
 const logger = require("../config/logger");
+const { parseImportFile } = require("../utils/noteFileParser");
+const { buildExportFile, SUPPORTED_FORMATS, MAX_EXPORT_NOTES } = require("../utils/noteFileExporter");
+const { ALLOWED_EXTENSIONS_LABEL } = require("../middleware/upload");
+
+const MAX_IMPORT_NOTES = 500;
+const MAX_TITLE_LENGTH = 200;
+const MAX_CONTENT_LENGTH = 20000;
 
 const getNotes = async (req, res) => {
   try {
@@ -11,7 +19,7 @@ const getNotes = async (req, res) => {
     logger.error({ err: error }, "GetNotes error");
     res.status(500).json({ message: "Server error fetching notes" });
   }
-};
+}; 
 
 const getTrashedNotes = async (req, res) => {
   try {
@@ -103,13 +111,7 @@ const updateNote = async (req, res) => {
 
 const togglePin = async (req, res) => {
   try {
-    // Exclude trashed notes so a stale pin request can't bypass the
-    // unpin-on-trash behavior enforced in trashNote().
-    const note = await Note.findOne({
-      _id: req.params.id,
-      owner: req.user.id,
-      trashed: false,
-    });
+    const note = await Note.findOne({ _id: req.params.id, owner: req.user.id });
 
     if (!note) {
       return res.status(404).json({ message: "Note not found" });
@@ -201,6 +203,158 @@ const permanentlyDeleteNote = async (req, res) => {
   }
 };
 
+const exportNotes = async (req, res, next) => {
+  let rawFormat = req.query.format;
+  if (Array.isArray(rawFormat)) {
+    rawFormat = rawFormat[0];
+  }
+  const format = typeof rawFormat === "string" ? rawFormat.toLowerCase() : "csv";
+
+  if (!SUPPORTED_FORMATS.includes(format)) {
+    return res.status(400).json({
+      message: `Unsupported format. Choose one of: ${SUPPORTED_FORMATS.join(", ")}`,
+    });
+  }
+
+  let filePath;
+
+  try {
+    const notes = await Note.find({ owner: req.user.id, trashed: false })
+      .sort({ createdAt: 1 })
+      .limit(MAX_EXPORT_NOTES + 1)
+      .lean();
+
+    if (notes.length === 0) {
+      return res.status(404).json({ message: "You have no notes to export" });
+    }
+
+    const built = buildExportFile(notes, format);
+    filePath = built.filePath;
+
+    logger.info(
+      {
+        userId: req.user.id,
+        noteCount: built.exportedCount,
+        truncated: built.truncated,
+        format,
+      },
+      "Notes exported"
+    );
+
+    res.download(filePath, built.filename, (err) => {
+      fs.unlink(filePath, (unlinkErr) => {
+        if (unlinkErr) {
+          logger.error({ err: unlinkErr }, "Failed to clean up export temp file");
+        }
+      });
+
+      if (err) {
+        logger.error({ err }, "Error sending export file");
+        // If headers were already sent (download partially streamed),
+        // we can't send a fresh JSON error response - forward to
+        // Express's error-handling middleware so it can close the
+        // connection correctly instead of attempting a double-send.
+        next(err);
+      }
+    });
+  } catch (error) {
+    if (filePath) {
+      fs.unlink(filePath, () => {});
+    }
+    logger.error({ err: error }, "ExportNotes error");
+    res.status(500).json({ message: "Server error exporting notes" });
+  }
+};
+
+const importNotes = async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: `Please upload a ${ALLOWED_EXTENSIONS_LABEL} file` });
+  }
+
+  const uploadedPath = req.file.path;
+
+  try {
+    let rawNotes;
+    try {
+      rawNotes = parseImportFile(uploadedPath);
+    } catch (parseError) {
+      logger.warn({ err: parseError }, "ImportNotes parse error");
+      return res.status(400).json({ message: "Could not parse the uploaded file" });
+    }
+
+    if (!Array.isArray(rawNotes) || rawNotes.length === 0) {
+      return res.status(400).json({ message: "No notes found in the uploaded file" });
+    }
+
+    if (rawNotes.length > MAX_IMPORT_NOTES) {
+      return res.status(400).json({
+        message: `Cannot import more than ${MAX_IMPORT_NOTES} notes at once`,
+      });
+    }
+
+    const validNotes = [];
+    const skipped = [];
+
+    rawNotes.forEach((raw, index) => {
+      const title = typeof raw?.title === "string" ? raw.title.trim() : "";
+      const content = typeof raw?.content === "string" ? raw.content.trim() : "";
+
+      if (!title) {
+        skipped.push({ index, reason: "Missing or empty title" });
+        return;
+      }
+
+      if (title.length > MAX_TITLE_LENGTH) {
+        skipped.push({ index, reason: "Title too long" });
+        return;
+      }
+
+      if (content.length > MAX_CONTENT_LENGTH) {
+        skipped.push({ index, reason: "Content too long" });
+        return;
+      }
+
+      validNotes.push({
+        title,
+        content,
+        owner: req.user.id,
+        pinned: false,
+      });
+    });
+
+    if (validNotes.length === 0) {
+      return res.status(400).json({
+        message: "No valid notes to import",
+        skipped,
+      });
+    }
+
+    const created = await Note.insertMany(validNotes, { ordered: false });
+
+    logger.info(
+      { userId: req.user.id, imported: created.length, skipped: skipped.length },
+      "Notes imported"
+    );
+
+    res.status(201).json({
+      message: `Imported ${created.length} note(s)`,
+      imported: created.length,
+      skippedCount: skipped.length,
+      skipped,
+      notes: created,
+    });
+  } catch (error) {
+    logger.error({ err: error }, "ImportNotes error");
+    res.status(500).json({ message: "Server error importing notes" });
+  } finally {
+    fs.unlink(uploadedPath, (unlinkErr) => {
+      if (unlinkErr) {
+        logger.error({ err: unlinkErr }, "Failed to clean up uploaded temp file");
+      }
+    });
+  }
+};
+
 module.exports = {
   getNotes,
   getTrashedNotes,
@@ -211,4 +365,6 @@ module.exports = {
   trashNote,
   restoreNote,
   permanentlyDeleteNote,
+  exportNotes,
+  importNotes,
 };
