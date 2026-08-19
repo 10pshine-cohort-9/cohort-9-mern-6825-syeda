@@ -46,6 +46,10 @@ app.use("/api/notes", noteRoutes);
 
 app.use((err, req, res, next) => {
   logger.error({ err }, "Unhandled error");
+  if (res.headersSent) {
+    return res.end();
+  }
+
   const isProd = process.env.NODE_ENV === "production";
   res.status(err.status || 500).json({
     message: isProd ? "Internal server error" : err.message || "Internal server error",
