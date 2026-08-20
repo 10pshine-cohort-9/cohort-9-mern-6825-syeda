@@ -12,7 +12,7 @@ const SUPPORTED_FORMATS = ["csv", "txt", "xlsx"];
 const MAX_EXPORT_NOTES = 2000;
 
 
-const TXT_DELIMITER_LINE = /^-----$/;
+const TXT_DELIMITER_LINE = /^-----\r?$/;
 
 
 const sanitizeCsvField = (value) => {

@@ -66,17 +66,21 @@ const Dashboard = () => {
   };
 
   const handleSubmit = async (data) => {
-    if (editingNote) {
-      const res = await api.put(`/notes/${editingNote._id}`, data);
-      setNotes((prev) => prev.map((n) => (n._id === editingNote._id ? res.data : n)));
-    } else {
-      const res = await api.post("/notes", data);
-      setNotes((prev) => [res.data, ...prev]);
+    try {
+      if (editingNote) {
+        const res = await api.put(`/notes/${editingNote._id}`, data);
+        setNotes((prev) => prev.map((n) => (n._id === editingNote._id ? res.data : n)));
+      } else {
+        const res = await api.post("/notes", data);
+        setNotes((prev) => [res.data, ...prev]);
+      }
+      setShowForm(false);
+      setEditingNote(null);
+    } catch (err) {
+      setError("Failed to save note");
+      throw err;
     }
-    setShowForm(false);
-    setEditingNote(null);
   };
-
   const handleTogglePin = async (note) => {
     const optimistic = { ...note, pinned: !note.pinned };
     setNotes((prev) => prev.map((n) => (n._id === note._id ? optimistic : n)));
@@ -114,12 +118,14 @@ const Dashboard = () => {
 
   const handlePermanentDelete = async (id) => {
     if (!window.confirm("Permanently delete this note? This cannot be undone.")) return;
-    const previous = trashedNotes;
+    const noteToRestore = trashedNotes.find((n) => n._id === id);
     setTrashedNotes((prev) => prev.filter((n) => n._id !== id));
     try {
       await api.delete(`/notes/${id}/permanent`);
     } catch (err) {
-      setTrashedNotes(previous);
+      if (noteToRestore) {
+        setTrashedNotes((prev) => [noteToRestore, ...prev]);
+      }
       setError("Failed to delete note");
     }
   };
