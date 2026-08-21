@@ -5,8 +5,10 @@ import ImportModal from "../components/ImportModal";
 import DashboardHeader from "../components/DashboardHeader";
 import WelcomeBanner from "../components/WelcomeBanner";
 import NotesGrid from "../components/NotesGrid";
+import FilterBar from "../components/FilterBar";
 import { useAuth } from "../context/AuthContext";
 import { useNotes } from "../hooks/useNotes";
+import { sortNotes, filterByDateRange } from "../hooks/noteFilters";
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -26,6 +28,8 @@ const Dashboard = () => {
 
   const [view, setView] = useState("all");
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState("newest");
+  const [dateRange, setDateRange] = useState("all");
   const [showForm, setShowForm] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -55,21 +59,29 @@ const Dashboard = () => {
     setEditingNote(null);
   };
 
+  // Search -> date range -> sort, applied in that order for both the
+  // active notes list and the trash list.
   const filteredActive = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return notes;
-    return notes.filter(
-      (n) => n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q)
-    );
-  }, [notes, search]);
+    let result = q
+      ? notes.filter(
+          (n) => n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q)
+        )
+      : notes;
+    result = filterByDateRange(result, dateRange);
+    return sortNotes(result, sortBy);
+  }, [notes, search, dateRange, sortBy]);
 
   const filteredTrash = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return trashedNotes;
-    return trashedNotes.filter(
-      (n) => n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q)
-    );
-  }, [trashedNotes, search]);
+    let result = q
+      ? trashedNotes.filter(
+          (n) => n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q)
+        )
+      : trashedNotes;
+    result = filterByDateRange(result, dateRange);
+    return sortNotes(result, sortBy);
+  }, [trashedNotes, search, dateRange, sortBy]);
 
   const cardProps = {
     onOpen: handleOpenNote,
@@ -106,6 +118,13 @@ const Dashboard = () => {
         {error && (
           <div className="bg-red-50 text-red-600 text-sm px-3 py-2 rounded-lg mb-4">{error}</div>
         )}
+
+        <FilterBar
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+        />
 
         <NotesGrid
           view={view}

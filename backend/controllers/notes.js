@@ -8,6 +8,19 @@ const { ALLOWED_EXTENSIONS_LABEL } = require("../middleware/upload");
 const MAX_IMPORT_NOTES = 500;
 const MAX_TITLE_LENGTH = 200;
 const MAX_CONTENT_LENGTH = 20000;
+const MAX_TAGS = 10;
+const MAX_TAG_LENGTH = 30;
+
+// Normalizes whatever the client sent for `tags` into a clean array of
+// short, trimmed, deduplicated strings (or [] if the input isn't usable).
+const sanitizeTags = (tags) => {
+  if (!Array.isArray(tags)) return [];
+  const cleaned = tags
+    .filter((t) => typeof t === "string")
+    .map((t) => t.trim())
+    .filter((t) => t.length > 0 && t.length <= MAX_TAG_LENGTH);
+  return [...new Set(cleaned)].slice(0, MAX_TAGS);
+};
 
 const getNotes = async (req, res) => {
   try {
@@ -53,7 +66,7 @@ const getNoteById = async (req, res) => {
 
 const createNote = async (req, res) => {
   try {
-    const { title, content } = req.body;
+    const { title, content, tags } = req.body;
 
     if (!title) {
       return res.status(400).json({ message: "Please provide a title" });
@@ -62,6 +75,7 @@ const createNote = async (req, res) => {
     const note = await Note.create({
       title,
       content: content || "",
+      tags: sanitizeTags(tags),
       owner: req.user.id,
     });
 
@@ -80,7 +94,7 @@ const createNote = async (req, res) => {
 
 const updateNote = async (req, res) => {
   try {
-    const { title, content } = req.body;
+    const { title, content, tags } = req.body;
 
     const note = await Note.findOne({ _id: req.params.id, owner: req.user.id });
 
@@ -90,6 +104,7 @@ const updateNote = async (req, res) => {
 
     if (title !== undefined) note.title = title;
     if (content !== undefined) note.content = content;
+    if (tags !== undefined) note.tags = sanitizeTags(tags);
 
     await note.save();
 
@@ -317,6 +332,7 @@ const importNotes = async (req, res) => {
       validNotes.push({
         title,
         content,
+        tags: sanitizeTags(raw?.tags),
         owner: req.user.id,
         pinned: false,
       });
