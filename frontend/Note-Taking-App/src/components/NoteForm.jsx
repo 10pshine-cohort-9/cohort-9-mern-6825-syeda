@@ -1,140 +1,98 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
+import RichTextEditor from "./RichTextEditor";
 
+/**
+ * NoteForm — modal for creating/editing a note.
+ * Same public contract as before: initialNote, onSubmit(data), onCancel().
+ * `content` is now an HTML string produced by the rich text editor.
+ */
 const NoteForm = ({ initialNote, onSubmit, onCancel }) => {
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
+  const [title, setTitle] = useState(initialNote?.title || "");
+  const [content, setContent] = useState(initialNote?.content || "");
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [saving, setSaving] = useState(false);
 
-  const titleInputRef = useRef(null);
-  const previouslyFocusedRef = useRef(null);
-
-  useEffect(() => {
-    setTitle(initialNote?.title || "");
-    setContent(initialNote?.content || "");
-  }, [initialNote]);
-
-  // Remember what had focus before the modal opened, and restore it on close.
-  useEffect(() => {
-    previouslyFocusedRef.current = document.activeElement;
-    titleInputRef.current?.focus();
-
-    return () => {
-      if (previouslyFocusedRef.current instanceof HTMLElement) {
-        previouslyFocusedRef.current.focus();
-      }
-    };
-  }, []);
-
-  // Support Escape to close the modal.
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === "Escape") {
-        onCancel();
-      }
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onCancel]);
+  const isEmpty = (html) => {
+    const stripped = html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, "").trim();
+    return stripped.length === 0;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
     if (!title.trim()) {
-      setError("Title is required");
+      setError("Give your note a title.");
+      return;
+    }
+    if (isEmpty(content)) {
+      setError("Your note can't be empty.");
       return;
     }
 
-    setSaving(true);
+    setSubmitting(true);
     try {
       await onSubmit({ title: title.trim(), content });
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to save note");
+      setError("Failed to save note. Please try again.");
     } finally {
-      setSaving(false);
+      setSubmitting(false);
     }
   };
 
   return (
     <div
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-40 p-4"
       onClick={onCancel}
-      className="fixed inset-0 bg-black/30 backdrop-blur-[2px] flex items-center justify-center p-4 z-50 animate-fade-in-up"
     >
       <div
+        className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-fade-in-up"
         onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="note-form-title"
-        className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 animate-modal-in"
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2
-              id="note-form-title"
-              className="font-['Space_Grotesk'] text-lg font-semibold text-gray-900"
-            >
-              {initialNote ? "Edit Note" : "New Note"}
+        <form onSubmit={handleSubmit}>
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            <h2 className="font-['Space_Grotesk'] text-lg font-bold text-[#10151F]">
+              {initialNote ? "Edit note" : "New note"}
             </h2>
             <button
               type="button"
               onClick={onCancel}
-              aria-label="Close"
-              className="text-gray-400 hover:text-gray-700 transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC93C] rounded"
+              className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-[#10151F] transition-colors duration-150"
+              title="Close"
             >
               ✕
             </button>
           </div>
 
-          {error && (
-            <div role="alert" className="bg-red-50 text-red-600 text-sm px-3 py-2 rounded-lg">
-              {error}
-            </div>
-          )}
-
-          <div>
-            <label htmlFor="note-title" className="block text-sm font-medium text-gray-700 mb-1">
-              Title
-            </label>
+          <div className="px-6 py-5 space-y-4">
             <input
-              id="note-title"
-              ref={titleInputRef}
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Note title"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#FFC93C] transition-shadow duration-150"
+              className="w-full text-lg font-semibold text-[#10151F] placeholder:text-gray-300 focus:outline-none border-b border-transparent focus:border-[#FFC93C] pb-1 transition-colors duration-150"
+              autoFocus
             />
+
+            <RichTextEditor content={content} onChange={setContent} />
+
+            {error && <p className="text-sm text-red-600">{error}</p>}
           </div>
 
-          <div>
-            <label htmlFor="note-content" className="block text-sm font-medium text-gray-700 mb-1">
-              Content
-            </label>
-            <textarea
-              id="note-content"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              rows={8}
-              placeholder="Write your note..."
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#FFC93C] transition-shadow duration-150 resize-none"
-            />
-          </div>
-
-          <div className="flex justify-end gap-3 pt-1">
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">
             <button
               type="button"
               onClick={onCancel}
-              className="px-4 py-2 text-gray-500 hover:text-gray-800 transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC93C] rounded-lg"
+              className="px-4 py-2 text-sm font-medium text-gray-500 rounded-lg hover:bg-gray-100 transition-colors duration-150"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={saving}
-              className="px-4 py-2 bg-[#FFC93C] hover:bg-[#f5bf2f] text-[#10151F] font-semibold rounded-lg disabled:opacity-50 transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#10151F]"
+              disabled={submitting}
+              className="px-5 py-2 text-sm font-semibold rounded-lg bg-[#10151F] text-[#FFC93C] hover:opacity-90 transition-opacity duration-150 disabled:opacity-50"
             >
-              {saving ? "Saving..." : "Save"}
+              {submitting ? "Saving..." : initialNote ? "Save changes" : "Create note"}
             </button>
           </div>
         </form>

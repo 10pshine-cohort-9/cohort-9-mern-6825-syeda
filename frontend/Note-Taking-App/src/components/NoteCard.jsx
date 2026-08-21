@@ -1,22 +1,15 @@
-const ACCENT_COLORS = ["#FFC93C", "#E8553D", "#4F8CFF", "#2FBF8F", "#B57BFF"];
-
-const getAccent = (id) => {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
-  return ACCENT_COLORS[Math.abs(hash) % ACCENT_COLORS.length];
-};
-
-const formatDate = (dateStr) => {
-  const date = new Date(dateStr);
-  const today = new Date();
-  const isToday = date.toDateString() === today.toDateString();
-  if (isToday) return "Today";
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-};
+import DOMPurify from "dompurify";
+import "./richTextContent.css";
 
 const PinIcon = ({ filled }) => (
-  <svg className="w-4 h-4" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9 4v6l-2 4v2h10v-2l-2-4V4M12 16v5" />
+  <svg
+    className="w-4 h-4"
+    viewBox="0 0 24 24"
+    fill={filled ? "currentColor" : "none"}
+    stroke="currentColor"
+    strokeWidth="2"
+  >
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 17v5M9 3h6l-1 6 4 3H6l4-3-1-6z" />
   </svg>
 );
 
@@ -28,47 +21,49 @@ const TrashIcon = () => (
 
 const RestoreIcon = () => (
   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M3 12a9 9 0 1 0 2.6-6.4M3 4v5h5" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5" />
   </svg>
 );
 
+/**
+ * NoteCard
+ * Same props as before: note, view ("all" | "pinned" | "trash"),
+ * onOpen, onTogglePin, onTrash, onRestore, onPermanentDelete.
+ * note.content is now sanitized HTML from the rich text editor.
+ */
 const NoteCard = ({ note, view, onOpen, onTogglePin, onTrash, onRestore, onPermanentDelete }) => {
-  const preview = note.content?.length > 110 ? `${note.content.slice(0, 110)}...` : note.content;
-  const accent = getAccent(note._id);
+  const cleanHtml = DOMPurify.sanitize(note.content || "", {
+    ALLOWED_TAGS: [
+      "p", "br", "strong", "em", "u", "s", "h1", "h2", "h3",
+      "ul", "ol", "li", "blockquote", "a", "code", "mark", "hr",
+    ],
+    ALLOWED_ATTR: ["href", "target", "rel", "class"],
+  });
 
-  const handleKeyDown = (e) => {
-    if (e.target !== e.currentTarget) return;
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      onOpen(note);
-    }
+  const stopPropagation = (fn) => (e) => {
+    e.stopPropagation();
+    fn();
   };
 
   return (
     <div
-      role="button"
-      tabIndex={0}
       onClick={() => onOpen(note)}
-      onKeyDown={handleKeyDown}
-      aria-label={`Open note: ${note.title}`}
-      style={{ borderLeftColor: accent }}
-      className="group bg-white rounded-xl shadow-sm hover:shadow-md focus:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC93C] border-l-4 p-4 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 animate-fade-in-up"
+      className={`group relative bg-white border border-gray-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow duration-150 ${
+        view === "trash" ? "cursor-default" : "cursor-pointer"
+      }`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <h3 className="font-['Space_Grotesk'] font-semibold text-gray-900 line-clamp-1">
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <h3 className="font-['Space_Grotesk'] font-semibold text-[#10151F] text-sm truncate">
           {note.title}
         </h3>
         {view !== "trash" && (
           <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onTogglePin(note);
-            }}
-            aria-pressed={note.pinned}
-            aria-label={note.pinned ? "Unpin note" : "Pin note"}
-            className={`shrink-0 transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC93C] rounded ${
-              note.pinned ? "text-[#E8553D]" : "text-gray-300 hover:text-gray-500"
+            onClick={stopPropagation(() => onTogglePin(note))}
+            title={note.pinned ? "Unpin" : "Pin"}
+            className={`shrink-0 p-1 rounded-full transition-colors duration-150 ${
+              note.pinned
+                ? "text-[#FFC93C]"
+                : "text-gray-300 opacity-0 group-hover:opacity-100 hover:text-[#FFC93C]"
             }`}
           >
             <PinIcon filled={note.pinned} />
@@ -76,56 +71,38 @@ const NoteCard = ({ note, view, onOpen, onTogglePin, onTrash, onRestore, onPerma
         )}
       </div>
 
-      <p className="text-gray-500 text-sm mt-1.5 line-clamp-3 whitespace-pre-line">
-        {preview || "No content yet."}
-      </p>
+      <div
+        className="rich-content text-sm text-gray-500 line-clamp-4 [&_a]:text-[#E8553D]"
+        dangerouslySetInnerHTML={{ __html: cleanHtml }}
+      />
 
-      <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-50">
-        <span className="text-xs text-gray-400">{formatDate(note.updatedAt)}</span>
-
-        <div className="flex gap-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-within:opacity-100 transition-opacity duration-150">
-          {view === "trash" ? (
-            <>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRestore(note._id);
-                }}
-                className="text-gray-400 hover:text-green-600 transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC93C] rounded"
-                title="Restore"
-                aria-label="Restore note"
-              >
-                <RestoreIcon />
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onPermanentDelete(note._id);
-                }}
-                className="text-gray-400 hover:text-red-600 transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC93C] rounded"
-                title="Delete permanently"
-                aria-label="Delete note permanently"
-              >
-                <TrashIcon />
-              </button>
-            </>
-          ) : (
+      <div className="flex items-center justify-end gap-1 mt-3 pt-2 border-t border-gray-50">
+        {view === "trash" ? (
+          <>
             <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onTrash(note._id);
-              }}
-              className="text-gray-400 hover:text-red-600 transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC93C] rounded"
-              title="Move to trash"
-              aria-label="Move note to trash"
+              onClick={stopPropagation(() => onRestore(note._id))}
+              title="Restore"
+              className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-[#10151F] px-2 py-1 rounded-md hover:bg-gray-100 transition-colors duration-150"
             >
-              <TrashIcon />
+              <RestoreIcon /> Restore
             </button>
-          )}
-        </div>
+            <button
+              onClick={stopPropagation(() => onPermanentDelete(note._id))}
+              title="Delete forever"
+              className="flex items-center gap-1 text-xs font-medium text-red-500 hover:text-red-700 px-2 py-1 rounded-md hover:bg-red-50 transition-colors duration-150"
+            >
+              <TrashIcon /> Delete forever
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={stopPropagation(() => onTrash(note._id))}
+            title="Move to trash"
+            className="opacity-0 group-hover:opacity-100 flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-red-600 px-2 py-1 rounded-md hover:bg-red-50 transition-colors duration-150"
+          >
+            <TrashIcon />
+          </button>
+        )}
       </div>
     </div>
   );
