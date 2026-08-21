@@ -34,6 +34,9 @@ const registerUser = async (req, res) => {
     });
   } catch (error) {
     logger.error({ err: error }, "Register error");
+    if (error.code === 11000) {
+      return res.status(409).json({ message: "User already exists with this email" });
+    }
     if (error.name === "ValidationError") {
       const messages = Object.values(error.errors).map((val) => val.message);
       return res.status(400).json({ message: messages.join(", ") });

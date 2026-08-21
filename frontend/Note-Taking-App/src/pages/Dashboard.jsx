@@ -3,6 +3,7 @@ import api from "../api/axios";
 import Sidebar from "../components/Sidebar";
 import NoteCard from "../components/NoteCard";
 import NoteForm from "../components/NoteForm";
+import ImportModal from "../components/ImportModal";
 import { useAuth } from "../context/AuthContext";
 
 const SearchIcon = () => (
@@ -22,6 +23,7 @@ const Dashboard = () => {
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   useEffect(() => {
     fetchAll();
@@ -76,12 +78,9 @@ const Dashboard = () => {
       setEditingNote(null);
     } catch (err) {
       setError("Failed to save note");
-      // Rethrow so NoteForm can show the field-level error and keep the
-      // modal open for the user to retry.
       throw err;
     }
   };
-
   const handleTogglePin = async (note) => {
     const optimistic = { ...note, pinned: !note.pinned };
     setNotes((prev) => prev.map((n) => (n._id === note._id ? optimistic : n)));
@@ -119,12 +118,14 @@ const Dashboard = () => {
 
   const handlePermanentDelete = async (id) => {
     if (!window.confirm("Permanently delete this note? This cannot be undone.")) return;
-    const previous = trashedNotes;
+    const noteToRestore = trashedNotes.find((n) => n._id === id);
     setTrashedNotes((prev) => prev.filter((n) => n._id !== id));
     try {
       await api.delete(`/notes/${id}/permanent`);
     } catch (err) {
-      setTrashedNotes(previous);
+      if (noteToRestore) {
+        setTrashedNotes((prev) => [noteToRestore, ...prev]);
+      }
       setError("Failed to delete note");
     }
   };
@@ -156,17 +157,13 @@ const Dashboard = () => {
     onPermanentDelete: handlePermanentDelete,
   };
 
-  const statusMessage =
-    view === "trash"
-      ? "Notes here are kept for 30 days before permanent deletion."
-      : "You have a few notes in your Library.";
-
   return (
     <div className="flex bg-[#F7F7FA] min-h-screen">
       <Sidebar
         view={view}
         onViewChange={setView}
         onNewNote={handleNewNote}
+        onImportClick={() => setShowImportModal(true)}
         counts={{ all: notes.length, pinned: notes.filter((n) => n.pinned).length, trash: trashedNotes.length }}
       />
 
@@ -223,7 +220,11 @@ const Dashboard = () => {
               Welcome back, {user?.name}
               <span className="font-['Caveat'] text-2xl text-[#FFC93C] ml-2">wonderful</span>
             </h1>
-            <p className="text-white/60 text-sm">{statusMessage}</p>
+            <p className="text-white/60 text-sm">
+              {view === "trash"
+                ? "Notes here are kept for 30 days before permanent deletion."
+                : "You have a few notes in your Library."}
+            </p>
           </div>
         </div>
 
@@ -293,6 +294,13 @@ const Dashboard = () => {
             setShowForm(false);
             setEditingNote(null);
           }}
+        />
+      )}
+
+      {showImportModal && (
+        <ImportModal
+          onClose={() => setShowImportModal(false)}
+          onImportSuccess={fetchAll}
         />
       )}
     </div>

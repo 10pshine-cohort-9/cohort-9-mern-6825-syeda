@@ -7,7 +7,7 @@ const XLSX = require("xlsx");
 // (originally part of a note's content) are written as "\-----"
 // by the exporter and are therefore NOT matched here.
 const TXT_RECORD_SEPARATOR = /\r?\n-----\r?\n/;
-const ESCAPED_DELIMITER_LINE = /^\\-----$/;
+const ESCAPED_DELIMITER_LINE = /^\\-----\r?$/;
 
 const unescapeTxtContent = (content) => {
   return content

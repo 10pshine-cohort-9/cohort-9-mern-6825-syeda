@@ -37,6 +37,7 @@ const NoteCard = ({ note, view, onOpen, onTogglePin, onTrash, onRestore, onPerma
   const accent = getAccent(note._id);
 
   const handleKeyDown = (e) => {
+    if (e.target !== e.currentTarget) return;
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       onOpen(note);
