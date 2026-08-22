@@ -33,6 +33,9 @@ const Dashboard = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
   const [showImportModal, setShowImportModal] = useState(false);
+  // Controls the Sidebar's off-canvas drawer below the `lg` breakpoint;
+  // ignored by Sidebar on desktop where it's always visible.
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -83,6 +86,17 @@ const Dashboard = () => {
     return sortNotes(result, sortBy);
   }, [trashedNotes, search, dateRange, sortBy]);
 
+  // Shared across the Sidebar counts and the profile drawer stats, so both
+  // stay in sync from a single source.
+  const counts = useMemo(
+    () => ({
+      all: notes.length,
+      pinned: notes.filter((n) => n.pinned).length,
+      trash: trashedNotes.length,
+    }),
+    [notes, trashedNotes]
+  );
+
   const cardProps = {
     onOpen: handleOpenNote,
     onTogglePin: togglePin,
@@ -98,19 +112,19 @@ const Dashboard = () => {
         onViewChange={setView}
         onNewNote={handleNewNote}
         onImportClick={() => setShowImportModal(true)}
-        counts={{
-          all: notes.length,
-          pinned: notes.filter((n) => n.pinned).length,
-          trash: trashedNotes.length,
-        }}
+        counts={counts}
+        mobileOpen={sidebarOpen}
+        onMobileClose={() => setSidebarOpen(false)}
       />
 
-      <main className="flex-1 px-8 py-6">
+      <main className="flex-1 min-w-0 px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
         <DashboardHeader
           search={search}
           onSearchChange={setSearch}
           user={user}
           onLogout={handleLogout}
+          counts={counts}
+          onMenuClick={() => setSidebarOpen(true)}
         />
 
         <WelcomeBanner userName={user?.name} isTrashView={view === "trash"} />

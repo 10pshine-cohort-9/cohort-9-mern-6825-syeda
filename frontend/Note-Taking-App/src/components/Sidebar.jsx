@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import ExportMenu from "./ExportMenu";
 
 const NavIcon = ({ path }) => (
@@ -9,6 +11,12 @@ const NavIcon = ({ path }) => (
     viewBox="0 0 24 24"
   >
     <path strokeLinecap="round" strokeLinejoin="round" d={path} />
+  </svg>
+);
+
+const CloseIcon = () => (
+  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
   </svg>
 );
 
@@ -42,64 +50,143 @@ const NavItem = ({ icon, label, count, active, onClick }) => (
   </button>
 );
 
-const Sidebar = ({ view, onViewChange, onNewNote, onImportClick, counts }) => {
+/**
+ * Sidebar — shared nav for both /dashboard and /settings.
+ * `view` drives the All/Pinned/Trash highlight on the notes page; pass
+ * `null` from any other page (e.g. SettingsPage) so none of them light up.
+ * The Settings item highlights itself off the current route instead, since
+ * it's a real page now rather than a modal toggled from Dashboard.
+ *
+ * Responsive behavior: below `lg`, the sidebar is a fixed, off-canvas
+ * drawer controlled by `mobileOpen` / `onMobileClose` (toggled from a
+ * hamburger button in DashboardHeader). At `lg` and above it reverts to
+ * the original sticky in-flow sidebar and the drawer chrome (backdrop,
+ * close button) is inert.
+ */
+const Sidebar = ({ view, onViewChange, onNewNote, onImportClick, counts, mobileOpen, onMobileClose }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Lock body scroll + support Escape while the mobile drawer is open.
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const handleKey = (e) => {
+      if (e.key === "Escape") onMobileClose?.();
+    };
+    document.addEventListener("keydown", handleKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", handleKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [mobileOpen, onMobileClose]);
+
+  const goToView = (v) => {
+    if (location.pathname !== "/") navigate("/");
+    onViewChange(v);
+    onMobileClose?.();
+  };
+
+  const goToSettings = () => {
+    navigate("/settings");
+    onMobileClose?.();
+  };
+
   return (
-    <aside className="w-60 shrink-0 bg-white border-r border-gray-100 h-screen sticky top-0 flex flex-col px-4 py-6">
-      <div className="flex items-center gap-2 px-2 mb-6">
-        <span className="w-2 h-2 rounded-full bg-[#E8553D]" />
-        <span className="font-['Space_Grotesk'] font-bold text-lg text-[#10151F]">
-          Library
-        </span>
-      </div>
+    <>
+      {/* Mobile backdrop */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-40 lg:hidden"
+          onClick={onMobileClose}
+        />
+      )}
 
-      <button
-        onClick={onNewNote}
-        className="flex items-center justify-center gap-2 bg-[#FFC93C] hover:bg-[#f5bf2f] text-[#10151F] font-semibold text-sm rounded-lg py-2.5 mb-6 transition-colors duration-150"
+      <aside
+        className={`
+          fixed inset-y-0 left-0 z-50 w-72 max-w-[80vw]
+          lg:static lg:z-auto lg:w-60 lg:max-w-none lg:sticky lg:top-0 lg:h-screen
+          shrink-0 bg-white border-r border-gray-100 h-screen flex flex-col px-4 py-6
+          transform transition-transform duration-200 ease-out
+          ${mobileOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0
+        `}
       >
-        <NavIcon path={ICONS.plus} />
-        New Note
-      </button>
+        <div className="flex items-center justify-between px-2 mb-6">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#E8553D]" />
+            <span className="font-['Space_Grotesk'] font-bold text-lg text-[#10151F]">
+              Library
+            </span>
+          </div>
+          <button
+            onClick={onMobileClose}
+            className="lg:hidden flex items-center justify-center w-8 h-8 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors duration-150"
+            aria-label="Close menu"
+          >
+            <CloseIcon />
+          </button>
+        </div>
 
-      <nav className="flex flex-col gap-1">
-        <NavItem
-          icon={ICONS.all}
-          label="All Notes"
-          count={counts.all}
-          active={view === "all"}
-          onClick={() => onViewChange("all")}
-        />
-        <NavItem
-          icon={ICONS.pinned}
-          label="Pinned"
-          count={counts.pinned}
-          active={view === "pinned"}
-          onClick={() => onViewChange("pinned")}
-        />
-        <NavItem
-          icon={ICONS.trash}
-          label="Trash"
-          count={counts.trash}
-          active={view === "trash"}
-          onClick={() => onViewChange("trash")}
-        />
-      </nav>
-
-      <div className="flex flex-col gap-1 mt-4 pt-4 border-t border-gray-100">
-        <ExportMenu />
         <button
-          onClick={onImportClick}
-          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-colors duration-150"
+          onClick={() => {
+            onNewNote();
+            onMobileClose?.();
+          }}
+          className="flex items-center justify-center gap-2 bg-[#FFC93C] hover:bg-[#f5bf2f] text-[#10151F] font-semibold text-sm rounded-lg py-2.5 mb-6 transition-colors duration-150"
         >
-          <NavIcon path={ICONS.upload} />
-          Import Notes
+          <NavIcon path={ICONS.plus} />
+          New Note
         </button>
-      </div>
 
-      <div className="mt-auto flex flex-col gap-1 pt-6 border-t border-gray-100">
-        <NavItem icon={ICONS.settings} label="Settings" active={false} onClick={() => {}} />
-        <NavItem icon={ICONS.help} label="Help" active={false} onClick={() => {}} />
-      </div>
-    </aside>
+        <nav className="flex flex-col gap-1">
+          <NavItem
+            icon={ICONS.all}
+            label="All Notes"
+            count={counts.all}
+            active={view === "all"}
+            onClick={() => goToView("all")}
+          />
+          <NavItem
+            icon={ICONS.pinned}
+            label="Pinned"
+            count={counts.pinned}
+            active={view === "pinned"}
+            onClick={() => goToView("pinned")}
+          />
+          <NavItem
+            icon={ICONS.trash}
+            label="Trash"
+            count={counts.trash}
+            active={view === "trash"}
+            onClick={() => goToView("trash")}
+          />
+        </nav>
+
+        <div className="flex flex-col gap-1 mt-4 pt-4 border-t border-gray-100">
+          <ExportMenu />
+          <button
+            onClick={() => {
+              onImportClick();
+              onMobileClose?.();
+            }}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-colors duration-150"
+          >
+            <NavIcon path={ICONS.upload} />
+            Import Notes
+          </button>
+        </div>
+
+        <div className="mt-auto flex flex-col gap-1 pt-6 border-t border-gray-100">
+          <NavItem
+            icon={ICONS.settings}
+            label="Settings"
+            active={location.pathname.startsWith("/settings")}
+            onClick={goToSettings}
+          />
+        </div>
+      </aside>
+    </>
   );
 };
 
