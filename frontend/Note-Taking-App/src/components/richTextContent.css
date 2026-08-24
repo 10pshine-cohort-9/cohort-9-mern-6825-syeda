@@ -1,0 +1,100 @@
+/* Shared styling for rich-text HTML rendered by RichTextEditor (while typing,
+   class="ProseMirror") and NoteCard (read-only preview, class="rich-content").
+
+   Tailwind's preflight reset strips default list-style, blockquote, and code
+   styling from raw HTML elements. These rules restore them explicitly so
+   bullets/numbers/quotes/code always render correctly, whether or not
+   @tailwindcss/typography's `prose` classes are installed/configured. */
+
+.ProseMirror ul,
+.rich-content ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+  margin: 0.5rem 0;
+}
+
+.ProseMirror ol,
+.rich-content ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+  margin: 0.5rem 0;
+}
+
+.ProseMirror li,
+.rich-content li {
+  margin: 0.15rem 0;
+  display: list-item;
+}
+
+.ProseMirror li p,
+.rich-content li p {
+  margin: 0;
+  display: inline;
+}
+
+.ProseMirror blockquote,
+.rich-content blockquote {
+  border-left: 3px solid #ffc93c;
+  padding-left: 0.75rem;
+  margin: 0.5rem 0;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.ProseMirror code,
+.rich-content code {
+  background: #f3f4f6;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.25rem;
+  font-size: 0.85em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.ProseMirror mark,
+.rich-content mark {
+  background-color: #ffc93c;
+  padding: 0 0.15em;
+  border-radius: 2px;
+}
+
+.ProseMirror hr,
+.rich-content hr {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 1rem 0;
+}
+
+.ProseMirror h1,
+.rich-content h1 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0.6rem 0 0.3rem;
+}
+
+.ProseMirror h2,
+.rich-content h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0.5rem 0 0.25rem;
+}
+
+.ProseMirror h3,
+.rich-content h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0.4rem 0 0.2rem;
+}
+
+.ProseMirror p,
+.rich-content p {
+  margin: 0.35rem 0;
+}
+
+/* Tiptap placeholder text (only needed in the editor, not the preview) */
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #9ca3af;
+  pointer-events: none;
+  height: 0;
+}
