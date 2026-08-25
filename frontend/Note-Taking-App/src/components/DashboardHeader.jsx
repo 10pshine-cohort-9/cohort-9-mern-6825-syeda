@@ -1,3 +1,6 @@
+import { useState } from "react";
+import ConfirmDialog from "./ConfirmDialog";
+
 const SearchIcon = () => (
   <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <circle cx="11" cy="11" r="7" />
@@ -13,42 +16,63 @@ const LogoutIcon = () => (
 
 /**
  * DashboardHeader — search input + logged-in user chip with logout.
+ * Logout now requires confirmation.
  */
-const DashboardHeader = ({ search, onSearchChange, user, onLogout }) => (
-  <div className="flex items-center justify-between gap-6 mb-6">
-    <div className="relative flex-1 max-w-md">
-      <span className="absolute left-3 top-1/2 -translate-y-1/2">
-        <SearchIcon />
-      </span>
-      <input
-        type="text"
-        value={search}
-        onChange={(e) => onSearchChange(e.target.value)}
-        placeholder="Search notes..."
-        className="w-full bg-white border border-gray-200 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FFC93C] transition-shadow duration-150"
-      />
-    </div>
+const DashboardHeader = ({ search, onSearchChange, user, onLogout }) => {
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
-    <div className="flex items-center gap-3">
-      <div className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-full pl-1.5 pr-1 py-1 shadow-sm">
-        <div className="w-7 h-7 rounded-full bg-[#10151F] flex items-center justify-center shrink-0">
-          <span className="font-['Space_Grotesk'] text-xs font-bold text-[#FFC93C]">
-            {user?.name?.charAt(0).toUpperCase() || "?"}
-          </span>
-        </div>
-        <span className="text-sm font-medium text-gray-700 hidden sm:block pr-1">
-          {user?.name}
+  const handleConfirm = () => {
+    setConfirmLogout(false);
+    onLogout();
+  };
+
+  return (
+    <div className="flex items-center justify-between gap-6 mb-6">
+      <div className="relative flex-1 max-w-md">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2">
+          <SearchIcon />
         </span>
-        <button
-          onClick={onLogout}
-          className="flex items-center justify-center w-7 h-7 rounded-full text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors duration-150"
-          title="Log out"
-        >
-          <LogoutIcon />
-        </button>
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="Search notes..."
+          className="w-full bg-white border border-gray-200 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FFC93C] transition-shadow duration-150"
+        />
       </div>
+
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-full pl-1.5 pr-1 py-1 shadow-sm">
+          <div className="w-7 h-7 rounded-full bg-[#10151F] flex items-center justify-center shrink-0">
+            <span className="font-['Space_Grotesk'] text-xs font-bold text-[#FFC93C]">
+              {user?.name?.charAt(0).toUpperCase() || "?"}
+            </span>
+          </div>
+          <span className="text-sm font-medium text-gray-700 hidden sm:block pr-1">
+            {user?.name}
+          </span>
+          <button
+            onClick={() => setConfirmLogout(true)}
+            className="flex items-center justify-center w-7 h-7 rounded-full text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors duration-150"
+            title="Log out"
+          >
+            <LogoutIcon />
+          </button>
+        </div>
+      </div>
+
+      {confirmLogout && (
+        <ConfirmDialog
+          title="Log out?"
+          message="You'll need to sign in again to access your notes."
+          confirmLabel="Log out"
+          danger
+          onConfirm={handleConfirm}
+          onCancel={() => setConfirmLogout(false)}
+        />
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 export default DashboardHeader;

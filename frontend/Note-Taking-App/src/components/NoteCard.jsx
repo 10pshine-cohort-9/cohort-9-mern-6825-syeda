@@ -1,4 +1,6 @@
+import { useState } from "react";
 import DOMPurify from "dompurify";
+import ConfirmDialog from "./ConfirmDialog";
 import "./richTextContent.css";
 
 const PinIcon = ({ filled }) => (
@@ -12,13 +14,11 @@ const PinIcon = ({ filled }) => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M12 17v5M9 3h6l-1 6 4 3H6l4-3-1-6z" />
   </svg>
 );
-
 const TrashIcon = () => (
   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path strokeLinecap="round" strokeLinejoin="round" d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6h16z" />
   </svg>
 );
-
 const RestoreIcon = () => (
   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path strokeLinecap="round" strokeLinejoin="round" d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5" />
@@ -30,8 +30,11 @@ const RestoreIcon = () => (
  * Same props as before: note, view ("all" | "pinned" | "trash"),
  * onOpen, onTogglePin, onTrash, onRestore, onPermanentDelete.
  * note.content is now sanitized HTML from the rich text editor.
+ * Trash + permanent delete now require confirmation.
  */
 const NoteCard = ({ note, view, onOpen, onTogglePin, onTrash, onRestore, onPermanentDelete }) => {
+  const [confirmAction, setConfirmAction] = useState(null); // "trash" | "delete" | null
+
   const cleanHtml = DOMPurify.sanitize(note.content || "", {
     ALLOWED_TAGS: [
       "p", "br", "strong", "em", "u", "s", "h1", "h2", "h3",
@@ -43,6 +46,12 @@ const NoteCard = ({ note, view, onOpen, onTogglePin, onTrash, onRestore, onPerma
   const stopPropagation = (fn) => (e) => {
     e.stopPropagation();
     fn();
+  };
+
+  const handleConfirm = () => {
+    if (confirmAction === "trash") onTrash(note._id);
+    if (confirmAction === "delete") onPermanentDelete(note._id);
+    setConfirmAction(null);
   };
 
   return (
@@ -87,7 +96,7 @@ const NoteCard = ({ note, view, onOpen, onTogglePin, onTrash, onRestore, onPerma
               <RestoreIcon /> Restore
             </button>
             <button
-              onClick={stopPropagation(() => onPermanentDelete(note._id))}
+              onClick={stopPropagation(() => setConfirmAction("delete"))}
               title="Delete forever"
               className="flex items-center gap-1 text-xs font-medium text-red-500 hover:text-red-700 px-2 py-1 rounded-md hover:bg-red-50 transition-colors duration-150"
             >
@@ -96,7 +105,7 @@ const NoteCard = ({ note, view, onOpen, onTogglePin, onTrash, onRestore, onPerma
           </>
         ) : (
           <button
-            onClick={stopPropagation(() => onTrash(note._id))}
+            onClick={stopPropagation(() => setConfirmAction("trash"))}
             title="Move to trash"
             className="opacity-0 group-hover:opacity-100 flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-red-600 px-2 py-1 rounded-md hover:bg-red-50 transition-colors duration-150"
           >
@@ -104,6 +113,28 @@ const NoteCard = ({ note, view, onOpen, onTogglePin, onTrash, onRestore, onPerma
           </button>
         )}
       </div>
+
+      {confirmAction === "trash" && (
+        <ConfirmDialog
+          title="Move note to trash?"
+          message={`"${note.title}" will be moved to Trash. You can restore it later.`}
+          confirmLabel="Move to trash"
+          danger
+          onConfirm={stopPropagation(handleConfirm)}
+          onCancel={stopPropagation(() => setConfirmAction(null))}
+        />
+      )}
+
+      {confirmAction === "delete" && (
+        <ConfirmDialog
+          title="Delete forever?"
+          message={`"${note.title}" will be permanently deleted. This action cannot be undone.`}
+          confirmLabel="Delete forever"
+          danger
+          onConfirm={stopPropagation(handleConfirm)}
+          onCancel={stopPropagation(() => setConfirmAction(null))}
+        />
+      )}
     </div>
   );
 };
