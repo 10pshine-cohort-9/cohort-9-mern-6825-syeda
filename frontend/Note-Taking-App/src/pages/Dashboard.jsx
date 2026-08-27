@@ -8,6 +8,21 @@ import NotesGrid from "../components/NotesGrid";
 import { useAuth } from "../context/AuthContext";
 import { useNotes } from "../hooks/useNotes";
 
+const sortNotes = (list, sortBy) => {
+  const sorted = [...list];
+  switch (sortBy) {
+    case "oldest":
+      return sorted.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    case "title-asc":
+      return sorted.sort((a, b) => a.title.localeCompare(b.title));
+    case "title-desc":
+      return sorted.sort((a, b) => b.title.localeCompare(a.title));
+    case "newest":
+    default:
+      return sorted.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }
+};
+
 const Dashboard = () => {
   const { user, logout } = useAuth();
   const {
@@ -26,6 +41,7 @@ const Dashboard = () => {
 
   const [view, setView] = useState("all");
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState("newest");
   const [showForm, setShowForm] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -57,19 +73,23 @@ const Dashboard = () => {
 
   const filteredActive = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return notes;
-    return notes.filter(
-      (n) => n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q)
-    );
-  }, [notes, search]);
+    const base = q
+      ? notes.filter(
+          (n) => n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q)
+        )
+      : notes;
+    return sortNotes(base, sortBy);
+  }, [notes, search, sortBy]);
 
   const filteredTrash = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return trashedNotes;
-    return trashedNotes.filter(
-      (n) => n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q)
-    );
-  }, [trashedNotes, search]);
+    const base = q
+      ? trashedNotes.filter(
+          (n) => n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q)
+        )
+      : trashedNotes;
+    return sortNotes(base, sortBy);
+  }, [trashedNotes, search, sortBy]);
 
   const cardProps = {
     onOpen: handleOpenNote,
@@ -113,6 +133,8 @@ const Dashboard = () => {
           loading={loading}
           filteredActive={filteredActive}
           filteredTrash={filteredTrash}
+          sortBy={sortBy}
+          onSortChange={setSortBy}
           cardProps={cardProps}
         />
       </main>
