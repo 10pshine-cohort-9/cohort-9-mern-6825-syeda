@@ -13,6 +13,7 @@ import {
   FileText,
   Calendar,
   TriangleAlert,
+  Menu,
 } from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import { useAuth } from "../context/AuthContext";
@@ -113,7 +114,7 @@ const StatCard = ({ icon: Icon, label, value, accent }) => (
  * before actually signing out. Mirrors the one used in DashboardHeader so
  * logout behaves the same way everywhere in the app.
  */
-const LogoutConfirmModal = ({ loading, onConfirm, onCancel }) => {
+const LogoutConfirmModal = ({ loading, error, onConfirm, onCancel }) => {
   useEffect(() => {
     const handleKey = (e) => {
       if (e.key === "Escape" && !loading) onCancel();
@@ -163,6 +164,11 @@ const LogoutConfirmModal = ({ loading, onConfirm, onCancel }) => {
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5">
             You'll need to sign in again to access your notes.
           </p>
+          {error && (
+            <p className="text-xs text-red-500 dark:text-red-400 mt-3 bg-red-50 dark:bg-red-500/10 rounded-lg px-3 py-2 w-full">
+              {error}
+            </p>
+          )}
         </div>
 
         <div className="p-3 pt-0 flex items-center gap-2">
@@ -191,7 +197,7 @@ const SettingsPage = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { notes, trashedNotes, loading } = useNotes();
-  const { profile, updateProfile, updateAvatar, saving } = useProfile();
+  const { profile, updateProfile, updateAvatar, saving, loaded } = useProfile();
   const fileInputRef = useRef(null);
 
   const [activeTab, setActiveTab] = useState("profile");
@@ -200,14 +206,23 @@ const SettingsPage = () => {
   const [justSaved, setJustSaved] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [confirmingLogout, setConfirmingLogout] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
+  // Only sync the form from the persisted profile once it has actually
+  // finished loading, and again if the signed-in user changes. We deliberately
+  // do NOT depend on `profile` itself here - otherwise an avatar upload
+  // (which also updates `profile`) would blow away any unsaved edits the
+  // user has typed into phone/location/bio.
   useEffect(() => {
+    if (!loaded) return;
     setForm({
       phone: profile.phone || "",
       location: profile.location || "",
       bio: profile.bio || "",
     });
-  }, [profile]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, user?._id]);
 
   const isDirty =
     form.phone !== (profile.phone || "") ||
@@ -246,16 +261,23 @@ const SettingsPage = () => {
 
   // The "Log out" button now only opens the confirmation modal; the actual
   // sign-out happens in confirmLogout once the user says yes.
-  const requestLogout = () => setConfirmingLogout(true);
+  const requestLogout = () => {
+    setLogoutError("");
+    setConfirmingLogout(true);
+  };
 
   const confirmLogout = async () => {
     setLoggingOut(true);
+    setLogoutError("");
     try {
       await logout();
       navigate("/login");
+    } catch (err) {
+      setLogoutError(
+        err?.response?.data?.message || err?.message || "Logout failed. Please try again."
+      );
     } finally {
       setLoggingOut(false);
-      setConfirmingLogout(false);
     }
   };
 
@@ -285,10 +307,20 @@ const SettingsPage = () => {
           pinned: pinnedCount,
           trash: trashedNotes.length,
         }}
+        mobileOpen={mobileNavOpen}
+        onMobileClose={() => setMobileNavOpen(false)}
       />
 
       <main className="flex-1 px-8 py-6">
         <div className="max-w-3xl mx-auto">
+          <button
+            onClick={() => setMobileNavOpen(true)}
+            className="lg:hidden mb-4 w-9 h-9 rounded-lg flex items-center justify-center border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors duration-150"
+            aria-label="Open menu"
+          >
+            <Menu size={18} />
+          </button>
+
           <div className="mb-1">
             <p className={`${labelClass} mb-2`}>Your account</p>
             <h1 className="font-['Space_Grotesk'] font-bold text-[28px] leading-tight tracking-tight text-gray-900 dark:text-white mb-1">
@@ -503,8 +535,14 @@ const SettingsPage = () => {
       {confirmingLogout && (
         <LogoutConfirmModal
           loading={loggingOut}
+          error={logoutError}
           onConfirm={confirmLogout}
-          onCancel={() => setConfirmingLogout(false)}
+          onCancel={() => {
+            if (!loggingOut) {
+              setConfirmingLogout(false);
+              setLogoutError("");
+            }
+          }}
         />
       )}
     </div>
