@@ -100,7 +100,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="flex bg-[#F7F7FA] min-h-screen">
+    <div className="flex bg-[#14141f] min-h-screen">
       <Sidebar
         view={view}
         onViewChange={setView}
