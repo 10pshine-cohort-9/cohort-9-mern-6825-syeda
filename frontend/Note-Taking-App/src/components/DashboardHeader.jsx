@@ -1,5 +1,6 @@
 import { useState } from "react";
 import ConfirmDialog from "./ConfirmDialog";
+import ProfileModal from "./ProfileModal";
 
 const SearchIcon = () => (
   <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -16,10 +17,12 @@ const LogoutIcon = () => (
 
 /**
  * DashboardHeader — search input + logged-in user chip with logout.
- * Logout now requires confirmation.
+ * Clicking the avatar/name opens the ProfileModal; the logout icon
+ * still requires a separate confirmation dialog.
  */
 const DashboardHeader = ({ search, onSearchChange, user, onLogout }) => {
   const [confirmLogout, setConfirmLogout] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
 
   const handleConfirm = () => {
     setConfirmLogout(false);
@@ -43,14 +46,20 @@ const DashboardHeader = ({ search, onSearchChange, user, onLogout }) => {
 
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-full pl-1.5 pr-1 py-1 shadow-sm">
-          <div className="w-7 h-7 rounded-full bg-[#10151F] flex items-center justify-center shrink-0">
-            <span className="font-['Space_Grotesk'] text-xs font-bold text-[#FFC93C]">
-              {user?.name?.charAt(0).toUpperCase() || "?"}
+          <button
+            onClick={() => setShowProfile(true)}
+            className="flex items-center gap-2.5 rounded-full pr-1 hover:opacity-80 transition-opacity duration-150"
+            title="View profile"
+          >
+            <div className="w-7 h-7 rounded-full bg-[#10151F] flex items-center justify-center shrink-0">
+              <span className="font-['Space_Grotesk'] text-xs font-bold text-[#FFC93C]">
+                {user?.name?.charAt(0).toUpperCase() || "?"}
+              </span>
+            </div>
+            <span className="text-sm font-medium text-gray-700 hidden sm:block">
+              {user?.name}
             </span>
-          </div>
-          <span className="text-sm font-medium text-gray-700 hidden sm:block pr-1">
-            {user?.name}
-          </span>
+          </button>
           <button
             onClick={() => setConfirmLogout(true)}
             className="flex items-center justify-center w-7 h-7 rounded-full text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors duration-150"
@@ -71,6 +80,8 @@ const DashboardHeader = ({ search, onSearchChange, user, onLogout }) => {
           onCancel={() => setConfirmLogout(false)}
         />
       )}
+
+      {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { Menu } from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import NoteForm from "../components/NoteForm";
 import ImportModal from "../components/ImportModal";
@@ -45,6 +46,7 @@ const Dashboard = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -100,7 +102,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="flex bg-[#F7F7FA] min-h-screen">
+    <div className="flex bg-[#14141f] min-h-screen">
       <Sidebar
         view={view}
         onViewChange={setView}
@@ -111,9 +113,19 @@ const Dashboard = () => {
           pinned: notes.filter((n) => n.pinned).length,
           trash: trashedNotes.length,
         }}
+        mobileOpen={mobileNavOpen}
+        onMobileClose={() => setMobileNavOpen(false)}
       />
 
       <main className="flex-1 px-8 py-6">
+        <button
+          onClick={() => setMobileNavOpen(true)}
+          className="lg:hidden mb-4 w-9 h-9 rounded-lg flex items-center justify-center border border-white/10 text-gray-300 hover:bg-white/5 transition-colors duration-150"
+          aria-label="Open menu"
+        >
+          <Menu size={18} />
+        </button>
+
         <DashboardHeader
           search={search}
           onSearchChange={setSearch}

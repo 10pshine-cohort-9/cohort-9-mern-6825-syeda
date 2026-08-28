@@ -8,7 +8,7 @@ const DownloadIcon = () => (
 );
 
 const FORMATS = [
-  { value: "csv", label: "CSV (.csv)" },
+
   { value: "txt", label: "Text (.txt)" },
   { value: "xlsx", label: "Excel (.xlsx)" },
 ];
